@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Fact-Check Beacon",
+  "version": "1.0.0",
+  "description": "Real-time AI claim verification using Gemini Search Grounding and Firebase.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*/*",
+    "http://localhost:3000/*",
+    "https://*.vercel.app/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Fact-Check Beacon"
+  }
+}

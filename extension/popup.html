@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fact-Check Beacon</title>
+  <link rel="stylesheet" href="tailwind.css" />
+</head>
+<body class="w-[380px] bg-slate-950 text-slate-100 font-sans p-4 m-0 overflow-x-hidden antialiased">
+  <!-- Header -->
+  <header class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-sm shadow-md shadow-indigo-600/30">
+        FB
+      </div>
+      <div>
+        <h1 class="text-sm font-bold text-white">
+          Fact-Check Beacon
+        </h1>
+        <p class="text-[10px] text-slate-400">Gemini Grounded AI Verifier</p>
+      </div>
+    </div>
+    <span id="mode-badge" class="px-2 py-0-5 text-[10px] font-semibold rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+      Live Mode
+    </span>
+  </header>
+
+  <!-- Content States -->
+
+  <!-- 1. Selection Warning / Instruction -->
+  <div id="no-selection-state" class="hidden text-center py-6 px-4 bg-slate-900 rounded-xl border border-slate-800 space-y-2">
+    <svg class="w-8 h-8 mx-auto text-indigo-400 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+    </svg>
+    <p class="text-xs font-semibold text-slate-200">No Text Highlighted</p>
+    <p class="text-[11px] text-slate-400 leading-relaxed">
+      Highlight any claim or statement on the webpage, then click the floating Beacon button or extension icon to verify.
+    </p>
+  </div>
+
+  <!-- 2. Loading State -->
+  <div id="loading-state" class="hidden text-center py-8 px-4 bg-slate-900 rounded-xl border border-slate-800 space-y-3">
+    <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+    <p class="text-xs font-semibold text-slate-200">Verifying claim with Gemini Search...</p>
+    <p class="text-[10px] text-slate-400 italic" id="checking-claim-preview">"Checking highlighted text..."</p>
+  </div>
+
+  <!-- 3. Verification Result Card -->
+  <div id="result-state" class="hidden space-y-4">
+    <!-- Selected Claim Box -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+      <p class="text-[10px] font-semibold uppercase text-slate-400 tracking-wider mb-1">Selected Claim</p>
+      <p id="claim-text" class="text-xs font-medium text-slate-200 italic line-clamp-3">
+        "..."
+      </p>
+    </div>
+
+    <!-- Circular Score Badge & Status Header -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+      <!-- Circle Badge -->
+      <div id="score-circle-container" class="relative w-16 h-16 shrink-0 rounded-full flex items-center justify-center border-4 font-extrabold text-lg shadow-lg">
+        <span id="score-text">0</span>
+      </div>
+
+      <!-- Status & Explanation -->
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <span id="status-badge" class="px-2 py-0-5 text-[11px] font-bold rounded-md uppercase tracking-wider">
+            Status
+          </span>
+        </div>
+        <p id="explanation-text" class="text-xs text-slate-300 leading-snug">
+          Explanation loading...
+        </p>
+      </div>
+    </div>
+
+    <!-- Grounding Sources -->
+    <div class="space-y-2">
+      <h3 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <span>Verified Grounding Sources</span>
+        <span id="sources-count" class="text-[10px] text-slate-500">0 sources</span>
+      </h3>
+      <div id="sources-list" class="space-y-1-5 max-h-32 overflow-y-auto pr-1">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- Main Popup Actions -->
+    <div class="pt-2 flex items-center justify-between gap-2">
+      <button id="report-rumor-btn" class="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-rose-400 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1-5 shadow-sm">
+        <svg class="w-3-5 h-3-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        Report Rumor
+      </button>
+
+      <button id="recheck-btn" class="py-2 px-3 bg-indigo-500/20 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 font-semibold text-xs rounded-xl transition-all">
+        Re-verify
+      </button>
+    </div>
+    
+    <div id="report-toast" class="hidden text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-lg text-center font-medium">
+      ✓ Reported to community rumor radar!
+    </div>
+  </div>
+
+  <!-- 4. Think Before You Share Modal (Triggers if score < 80) -->
+  <div id="warning-modal" class="hidden fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+      <!-- Modal Header -->
+      <div class="flex items-center gap-2 text-amber-400">
+        <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <h2 class="text-sm font-bold text-white">Think Before You Share</h2>
+      </div>
+
+      <p class="text-xs text-slate-300 leading-relaxed">
+        This claim has a low trust score (<span id="modal-score" class="font-bold text-amber-400">--</span>). Here is the verified context:
+      </p>
+
+      <!-- Corrected Text Box -->
+      <div class="bg-slate-950 border border-amber-500/30 rounded-xl p-3">
+        <p class="text-[10px] font-semibold uppercase text-amber-400 tracking-wider mb-1">Verified Correction</p>
+        <p id="corrected-text-body" class="text-xs text-slate-200 leading-relaxed font-medium">
+          Correction context here...
+        </p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col gap-2 pt-2">
+        <button id="copy-correction-btn" class="w-full py-2-5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1-5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+          </svg>
+          Copy Correction
+        </button>
+
+        <button id="share-anyway-btn" class="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 font-medium text-xs rounded-xl transition-colors">
+          Share Anyway
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
