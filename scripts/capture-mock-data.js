@@ -43,16 +43,17 @@ async function checkClaim(claimText) {
   console.log(`🔍 Processing live grounding for claim: "${claimText}"...`);
 
   const TRUSTED_SOURCES = `
-- World Health Organization: who.int
-- CDC (US Centers for Disease Control and Prevention): cdc.gov
-- United Nations: un.org
-- UNESCO: unesco.org
-- AFP Fact Check: factcheck.afp.com
-- Reuters Fact Check: reuters.com/fact-check
-- Snopes: snopes.com
-- Google Fact Check Tools: toolbox.google.com/factcheck
-- Associated Press: apnews.com
-- BBC News: bbc.com/news
+TRUSTED SOURCES (prioritize these domains when relevant):
+- Health Global: World Health Organization — who.int
+- Health US: CDC — cdc.gov
+- UN: United Nations — un.org
+- UN: UNESCO — unesco.org
+- Fact Check: AFP Fact Check — factcheck.afp.com
+- Fact Check: Reuters Fact Check — reuters.com/fact-check
+- Fact Check: Snopes — snopes.com
+- Fact Check: Google Fact Check Tools — toolbox.google.com/factcheck
+- News: Associated Press — apnews.com
+- News: BBC News — bbc.com/news
 `.trim();
 
   const prompt = `You are an expert fact-checker. Analyze the following claim carefully:

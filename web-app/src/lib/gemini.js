@@ -9,16 +9,17 @@ export async function checkClaimWithGemini(claimText) {
   }
 
   const TRUSTED_SOURCES = `
-- World Health Organization: who.int
-- CDC (US Centers for Disease Control and Prevention): cdc.gov
-- United Nations: un.org
-- UNESCO: unesco.org
-- AFP Fact Check: factcheck.afp.com
-- Reuters Fact Check: reuters.com/fact-check
-- Snopes: snopes.com
-- Google Fact Check Tools: toolbox.google.com/factcheck
-- Associated Press: apnews.com
-- BBC News: bbc.com/news
+TRUSTED SOURCES (prioritize these domains when relevant):
+- Health Global: World Health Organization — who.int
+- Health US: CDC — cdc.gov
+- UN: United Nations — un.org
+- UN: UNESCO — unesco.org
+- Fact Check: AFP Fact Check — factcheck.afp.com
+- Fact Check: Reuters Fact Check — reuters.com/fact-check
+- Fact Check: Snopes — snopes.com
+- Fact Check: Google Fact Check Tools — toolbox.google.com/factcheck
+- News: Associated Press — apnews.com
+- News: BBC News — bbc.com/news
 `.trim();
 
   const prompt = `You are an expert fact-checker. Analyze the following claim carefully:
@@ -46,51 +47,71 @@ Rules for trustScore and status:
 - correctedText MUST provide the verified factual correction. DO NOT return the original claim.
 `;
 
-  let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
-  const headers = { "Content-Type": "application/json" };
+  const modelsToTry = [
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-2.5-flash"
+  ];
 
-  if (apiKey.startsWith("AQ.")) {
-    headers["Authorization"] = `Bearer ${apiKey}`;
-  } else {
-    url += `?key=${apiKey}`;
-    headers["x-goog-api-key"] = apiKey;
+  let lastApiError = null;
+  let data = null;
+
+  for (const modelName of modelsToTry) {
+    let url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const headers = {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    };
+    if (apiKey.startsWith("AQ.")) {
+      headers["Authorization"] = `Bearer ${apiKey}`;
+    }
+
+    const requestBody = {
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+      tools: [
+        {
+          googleSearch: {},
+        },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        topP: 0.95,
+        maxOutputTokens: 1000,
+      },
+    };
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify(requestBody),
+      });
+
+      if (res.ok) {
+        data = await res.json();
+        console.log(`[gemini.js] Successfully generated content using model: ${modelName}`);
+        break;
+      }
+
+      const errText = await res.text();
+      console.warn(`Gemini API Model [${modelName}] returned [${res.status}]:`, errText);
+      lastApiError = new Error(`Gemini API request failed [${res.status}]: ${errText}`);
+    } catch (err) {
+      lastApiError = err;
+    }
   }
 
-  const requestBody = {
-    contents: [
-      {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
-      },
-    ],
-    tools: [
-      {
-        googleSearch: {},
-      },
-    ],
-    generationConfig: {
-      temperature: 0.1,
-      topP: 0.95,
-      maxOutputTokens: 1000,
-    },
-  };
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: headers,
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    console.error(`Gemini API Error [${res.status}]:`, errText);
-    throw new Error(`Gemini API request failed [${res.status}]: ${errText}`);
+  if (!data) {
+    throw lastApiError || new Error("Failed to call Gemini API across all model endpoints");
   }
-
-  const data = await res.json();
   console.log("Raw Gemini API Response:", JSON.stringify(data, null, 2));
 
   const candidate = data.candidates?.[0];

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkClaimWithGemini } from "@/lib/gemini";
+import { verifyClaimUniversal } from "@/lib/factchecker";
 import mockResponses from "../../../../data/mockResponses.json";
 
 function corsHeaders() {
@@ -30,53 +30,32 @@ export async function POST(request) {
     console.log(`[API /api/check-claim] Checking claim (USE_MOCK=${useMock}): "${claimText}"`);
 
     if (useMock) {
-      // Mock Mode: Match against mockResponses.json
       const normalizedInput = claimText.toLowerCase();
       const match = mockResponses.find((item) => {
         const itemClaim = item.claim.toLowerCase();
-        return (
-          itemClaim === normalizedInput ||
-          itemClaim.includes(normalizedInput) ||
-          normalizedInput.includes(itemClaim)
-        );
+        return itemClaim === normalizedInput || itemClaim.includes(normalizedInput) || normalizedInput.includes(itemClaim);
       });
-
       if (match) {
-        console.log(`[API /api/check-claim] Mock Match Found:`, match);
         return NextResponse.json(match, { headers: corsHeaders() });
       }
-
-      // Fall through to clear "not in demo set" response
-      const fallbackMock = {
-        claim: claimText,
-        trustScore: 0,
-        status: "Needs Context",
-        explanation:
-          "Claim not found in pre-captured demo dataset. Toggle USE_MOCK=false to perform live Gemini AI fact-checking.",
-        sources: [],
-        correctedText: `Factual Correction required: The claim "${claimText}" is not in the pre-captured mock set. Toggle USE_MOCK=false for live verification.`,
-      };
-      console.log(`[API /api/check-claim] Mock Fallback Response:`, fallbackMock);
-      return NextResponse.json(fallbackMock, { headers: corsHeaders() });
     }
 
-    // Live Mode: Call Gemini Flash API with Search Grounding
-    const result = await checkClaimWithGemini(claimText);
-    console.log(`[API /api/check-claim] Live Gemini Result:`, result);
+    // Universal Fact-Checking Engine (Groq / OpenRouter / Gemini / Zero-Key Live Search)
+    const result = await verifyClaimUniversal(claimText);
+    console.log(`[API /api/check-claim] Fact-Check Result:`, result);
     return NextResponse.json(result, { headers: corsHeaders() });
   } catch (error) {
     console.error("Error in /api/check-claim:", error);
     return NextResponse.json(
       {
-        error: error.message || "Failed to check claim",
         claim: "",
         trustScore: 0,
         status: "Likely False",
-        explanation: "An error occurred while evaluating the claim.",
+        explanation: error.message || "An error occurred while evaluating the claim.",
         sources: [],
-        correctedText: "An error occurred while evaluating the claim.",
+        correctedText: error.message || "An error occurred while evaluating the claim.",
       },
-      { status: 500, headers: corsHeaders() }
+      { status: 200, headers: corsHeaders() }
     );
   }
 }

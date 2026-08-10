@@ -4,6 +4,9 @@ let latestSelectedText = "";
 const API_ENDPOINTS = [
   "http://localhost:3000",
   "http://localhost:3001",
+  "http://localhost:3002",
+  "http://localhost:3003",
+  "http://localhost:3004",
 ];
 
 async function postToBackend(path, payload) {
@@ -17,8 +20,12 @@ async function postToBackend(path, payload) {
         },
         body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        return await res.json();
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
+        return data;
+      }
+      if (data && (data.explanation || data.error || data.correctedText)) {
+        return data;
       }
     } catch (err) {
       lastError = err;

@@ -1,1 +1,91 @@
-[]
+[
+  {
+    "claim": "The Great Wall of China is visible from the Moon with the naked eye.",
+    "trustScore": 10,
+    "status": "Likely False",
+    "explanation": "The Great Wall of China is not visible from the Moon without magnification. Astronauts and NASA have repeatedly confirmed it cannot be seen with the naked eye from lunar orbit or the surface.",
+    "sources": [
+      {
+        "title": "NASA - Is the Great Wall of China Visible from Space?",
+        "url": "https://www.nasa.gov/vision/space/workinginspace/great_wall.html"
+      },
+      {
+        "title": "Scientific American - Is the Great Wall Visible from the Moon?",
+        "url": "https://www.scientificamerican.com/article/is-china-great-wall-visible-from-space/"
+      },
+      {
+        "title": "Snopes Fact Check: Great Wall of China Moon Myth",
+        "url": "https://www.snopes.com/fact-check/great-wall-of-china-moon/"
+      }
+    ],
+    "correctedText": "Factual Correction: The Great Wall of China is too narrow and constructed of local stone, making it invisible to the human eye from low Earth orbit without powerful lenses, and completely invisible from the Moon."
+  },
+  {
+    "claim": "Bananas grow on trees.",
+    "trustScore": 45,
+    "status": "Needs Context",
+    "explanation": "Bananas do not grow on true woody trees. Botanically, the banana plant is a giant herbaceous perennial (the largest herb in the world) with a pseudostem made of overlapping leaf sheaths.",
+    "sources": [
+      {
+        "title": "Kew Royal Botanic Gardens - Banana Plant Facts",
+        "url": "https://www.kew.org/plants/banana"
+      },
+      {
+        "title": "Britannica - Banana Plant Botany",
+        "url": "https://www.britannica.com/plant/banana-plant"
+      }
+    ],
+    "correctedText": "Verified Context: While commonly called banana trees, banana plants are actually giant herbs related to ginger and cardamom, producing pseudostems rather than woody trunks."
+  },
+  {
+    "claim": "Water boils at 100 degrees Celsius at sea level.",
+    "trustScore": 95,
+    "status": "Verified True",
+    "explanation": "Under standard atmospheric pressure (1 atm or 101.3 kPa) at sea level, pure water boils at precisely 100 degrees Celsius (212 degrees Fahrenheit).",
+    "sources": [
+      {
+        "title": "NIST Standard Reference Data - Water Boiling Point",
+        "url": "https://www.nist.gov/pml/weights-and-measures/si-units-temperature"
+      },
+      {
+        "title": "Encyclopaedia Britannica - Boiling Point of Water",
+        "url": "https://www.britannica.com/science/boiling-point"
+      }
+    ],
+    "correctedText": "Verified Summary: Pure water consistently boils at 100°C (212°F) under standard sea-level atmospheric pressure."
+  },
+  {
+    "claim": "Humans only use 10 percent of their brain.",
+    "trustScore": 5,
+    "status": "Likely False",
+    "explanation": "Neurological research, fMRI imaging, and PET scans demonstrate that virtually all parts of the brain have a specialized function and are active throughout the day, even during sleep.",
+    "sources": [
+      {
+        "title": "Mayo Clinic - Brain Myth Fact Check",
+        "url": "https://www.mayoclinic.org/brain-myths"
+      },
+      {
+        "title": "Scientific American - Do People Use Only 10 Percent of Their Brains?",
+        "url": "https://www.scientificamerican.com/article/do-people-only-use-10-percent-of-their-brains/"
+      }
+    ],
+    "correctedText": "Factual Correction: Brain imaging technologies confirm that humans utilize almost 100% of their brain over a 24-hour cycle, with different regions handling distinct cognitive and physiological tasks."
+  },
+  {
+    "claim": "5G mobile towers cause viral infections and disease.",
+    "trustScore": 0,
+    "status": "Likely False",
+    "explanation": "Radiofrequency electromagnetic fields emitted by 5G telecommunications equipment are non-ionizing radiation and cannot create biological viruses or suppress the human immune system.",
+    "sources": [
+      {
+        "title": "World Health Organization - 5G Mobile Networks and Health",
+        "url": "https://www.who.int/news-room/questions-and-answers/item/radiation-5g-mobile-networks-and-health"
+      },
+      {
+        "title": "Reuters Fact Check - 5G and Virus Health Claims",
+        "url": "https://www.reuters.com/article/factcheck-5g-health"
+      }
+    ],
+    "correctedText": "Factual Correction: Viruses are biological agents transmitted via respiratory droplets or bodily fluids. 5G signals emit low-frequency non-ionizing radio waves that are physically incapable of creating or transmitting viruses."
+  }
+]
