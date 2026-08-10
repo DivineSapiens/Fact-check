@@ -9,7 +9,7 @@
 **Fact-Check Beacon** is an AI-powered misinformation defense system that works invisibly in the background as you browse. It consists of two products working in tandem:
 
 1. **A Chrome Browser Extension** — the personal fact-checker that lives in your browser and activates on any text you highlight on any website.
-2. **A Next.js Web Dashboard** — a community intelligence hub that aggregates crowd-reported misinformation into a live leaderboard and analytics feed.
+2. **A Next.js Web Dashboard** — a community intelligence hub that aggregates crowd-reported misinformation into a live leaderboard, analytics feed, and interactive claim sandbox with document upload support.
 
 Together, they form a lightweight, always-available truth layer that sits between you and the information you consume.
 
@@ -47,17 +47,17 @@ Existing fact-checking websites require a user to:
    - **Status Label**: `Verified True`, `Needs Context`, or `Likely False`.
    - **AI Explanation**: A concise, 50-word synthesis of evidence.
    - **Factual Correction or Context**: What the verified reality actually says.
-   - **Up to 3 Grounding Sources**: Real URLs (Wikipedia, WHO, Reuters, BBC, AP, CDC, Snopes, etc.) that support the evaluation.
+   - **Entity-Verified Grounding Sources**: Up to 3 verified URLs (Wikipedia, WHO, Reuters, BBC, AP, CDC, Snopes, or 1-click `🔍 Verify Web News` links) filtered by strict Proper Noun relevance.
 4. If the score is **below 80**, a **"Think Before You Share"** modal fires automatically — interrupting the natural impulse to copy-paste or screenshot the claim.
-5. From any result, you can **"Report as Rumor"** — one click sends the claim to the community database.
+5. From any result, you can **"Report as Rumor"** — one click sends the claim and your current webpage URL (`sourceUrl`) to the community database.
 
 ### For the Community (Web Dashboard)
 
 - The **web dashboard** shows all community-reported rumors in real time via Firebase Firestore.
-- **Stat Cards** show total claims analyzed, average trust score, and top reporter.
-- **Live Rumor Feed** shows recent reports with status badges and filter controls.
+- **Stat Cards** show total claims analyzed, average trust score, and active reporters.
+- **Live Rumor Feed** shows recent reports with status badges, filter controls, and **Original Webpage Source ↗** direct links.
 - **Reporter Leaderboard** ranks users by total reports submitted, incentivizing community participation.
-- **Interactive Sandbox** lets anyone paste a claim into the dashboard and test it directly.
+- **Interactive Sandbox** lets anyone paste a claim or upload documents (`.pdf`, `.doc`, `.txt`) into the dashboard and test them directly.
 
 ---
 
@@ -68,21 +68,21 @@ The backend uses a graceful fallback chain with no single point of failure:
 
 | Priority | Provider | Model | Cost |
 | :--- | :--- | :--- | :--- |
-| 1st | **Groq** | Llama 3.3 70B Versatile | Free tier |
-| 2nd | **OpenRouter** | Llama 3.3 70B Instruct | Free credits |
-| 3rd | **Gemini** | Flash 2.0 / 1.5 | If AIzaSy key present |
-| 4th | **Wikipedia Live Engine** | Keyword grounding | Zero API key — always works |
+| 1st | **Wikipedia Live Engine** | Proper Noun & Relevance Filtered Search | Zero API key — always works |
+| 2nd | **Groq** | Llama 3.3 70B Versatile | Free tier |
+| 3rd | **OpenRouter** | Llama 3.3 70B Instruct | Paid credits (free tier deprecated) |
+| 4th | **Gemini** | Flash 2.0 / 1.5 | If AIzaSy key present |
 
 Fact-Check Beacon can operate **24/7 with zero API cost** in its baseline mode, and upgrades to premium LLM mode simply by dropping in an API key.
 
 ---
 
-### 📎 Live Grounding — Not Hallucination
+### 📎 Live Grounding & Entity Relevance
 Unlike raw LLM responses, Fact-Check Beacon always grounds answers in **real web citations**:
 - Before calling any LLM, it queries the **Wikipedia Search API** to retrieve contextually relevant snippets.
-- These snippets are embedded into the LLM prompt as evidence — the AI analyzes real data, not just its training memory.
+- **Strict Relevance Checking (`isSourceRelevant`)**: Extracts Proper Nouns (e.g. `NALSAR`, `WHO`, `CDC`) and non-generic terms to filter out unrelated Wikipedia pages (eliminating false positive links like Kota Factory or Singapore education).
 - When Gemini is used, it additionally uses Google's **Search Grounding API** to pull live web results at inference time.
-- Citations shown to the user are **real URLs** pulled from these grounding calls, not invented by the model.
+- Citations shown to the user are **real, entity-verified URLs**, or clean 1-click `🔍 Verify Web News` search verification links.
 
 ---
 
@@ -99,79 +99,7 @@ All AI providers are instructed to prioritize these trusted domains:
 
 ---
 
-### ⚡ Instant In-Page UI (Shadow DOM Isolation)
-All extension UI elements are rendered inside **Shadow DOM containers**:
-- The extension's CSS never conflicts with the target website's CSS.
-- Works on any website, regardless of CSS frameworks or themes.
-- The overlay is fully self-contained and does not modify the host page's DOM.
-
----
-
-### 🚨 Behavioral Friction Against Sharing Misinformation
-When a claim scores below 80/100, a **"Think Before You Share"** modal fires proactively:
-
-> *Interrupting the share reflex at the point of exposure is more effective than correcting misinformation after it has spread.*
-
-The modal offers:
-- A red warning header explaining the risk level.
-- The verified factual correction.
-- A **"Copy Correction"** button — making it easy to share the truth instead.
-- A **"Dismiss"** button (no gatekeeping — just awareness).
-
----
-
-### 🏛️ Community Rumor Radar (Firestore-Backed)
-Every reported claim is stored in Firebase Firestore with claim text, Trust Score, verdict status, anonymous reporter ID, and timestamp. The web dashboard subscribes in real-time via `onSnapshot`, creating a crowdsourced early-warning system for trending misinformation.
-
----
-
-### 🔒 Privacy-First Design
-- **No account required** — the extension generates a random anonymous reporter ID.
-- **No browsing history stored** — only user-initiated, explicitly reported claims reach Firestore.
-- **No tracking pixels** in the extension.
-- Chrome **Manifest V3** (most restrictive extension architecture) used by design.
-
----
-
-## Impact Potential
-
-| Metric | Detail |
-| :--- | :--- |
-| Speed | 2–5 seconds per claim vs. 5–10 minutes manual research |
-| Friction | Inline overlay — zero tab-switching required |
-| Uptime | 100% with Zero-Key Wikipedia engine (no API dependency) |
-| Source reliability | Top 10 globally trusted domains biased into every evaluation |
-| Community scale | Each report enriches the shared database for all users |
-
-### Real-World Impact Scenarios
-
-**Health Crisis**: A viral WhatsApp message claims an unproven treatment for a disease. A user receives it, pastes the claim into the extension popup, sees score 12/100 ("Likely False") with a WHO citation, and reads the correction before forwarding.
-
-**Election Misinformation**: A user sees a political claim on a news article. One click gives a Trust Score with AP, Reuters, and BBC grounding — in seconds, not hours.
-
-**Education**: Students, researchers, and journalists use the sandbox tester on the dashboard for rapid preliminary fact-checks before citing a source.
-
-**Platform Moderation**: Community reports flow into the dashboard as an early-warning signal for claims going viral that warrant deeper investigation.
-
----
-
-## Technical Highlights
-
-- **Zero vendor lock-in**: Switch from Groq to OpenRouter to Gemini to zero-API mode with no code change — just update `.env.local`.
-- **CORS-enabled API**: The Next.js backend enables direct extension calls without proxy complexity.
-- **Graceful degradation**: Every AI provider failure cascades to the next, ending at the Wikipedia engine. The user always gets a result.
-- **Prompt-hardened outputs**: All LLM providers are given structured JSON schemas with explicit anti-echoing instructions for `correctedText`.
-- **Mock Mode**: `USE_MOCK=true` enables fully offline development with pre-captured responses.
-
----
-
-## Roadmap
-
-- [ ] **Vercel Deployment** — production deployment with Groq + Firebase env vars
-- [ ] **Chrome Web Store Submission** — package and publish the extension
-- [ ] **Historical Trend Analytics** — chart claim volume and trust score trends
-- [ ] **Topic Clustering** — group related rumors into topics (health, politics, science)
-- [ ] **Social Share Integration** — pre-filled tweet/post with the factual correction
-- [ ] **Mobile Companion App** — Android/iOS share sheet for WhatsApp/Telegram claims
-- [ ] **Public API Access** — expose `/api/check-claim` for third-party integrations
-- [ ] **Firefox Extension Port** — Manifest V3 compatibility for Gecko-based browsers
+### 📄 Interactive Sandbox with Document Uploads
+- Test text claims or upload documents (`.pdf`, `.doc`, `.docx`, `.txt`, `.md`, `.json`, `.csv`) directly from your device.
+- Native `FileReader` extracts text instantly into the sandbox with file size and attachment metadata pill displays.
+- Quick `X` button allows instant clearing of inputs and attached documents.

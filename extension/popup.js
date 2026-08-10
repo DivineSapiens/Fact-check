@@ -71,6 +71,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     reportRumorBtn.innerText = "Reporting...";
     const reporterId = await getReporterId();
 
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []);
+    const sourceUrl = tab?.url || "";
+
     chrome.runtime.sendMessage(
       {
         action: "reportRumor",
@@ -79,13 +82,26 @@ document.addEventListener("DOMContentLoaded", async () => {
           score: currentResult.trustScore,
           status: currentResult.status,
           reporterId: reporterId,
+          sourceUrl: sourceUrl,
+          sources: currentResult.sources || [],
         },
       },
-      () => {
-        reportRumorBtn.disabled = false;
-        reportRumorBtn.innerHTML = `✓ Reported`;
-        reportToast.classList.remove("hidden");
-        setTimeout(() => reportToast.classList.add("hidden"), 3500);
+      (response) => {
+        if (response && response.success) {
+          reportRumorBtn.disabled = true;
+          reportRumorBtn.innerHTML = `✓ Reported`;
+          reportToast.className = "text-center text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 py-1.5 px-3 rounded-lg";
+          reportToast.innerText = "✓ Reported to community rumor radar!";
+          reportToast.classList.remove("hidden");
+          setTimeout(() => reportToast.classList.add("hidden"), 3500);
+        } else {
+          reportRumorBtn.disabled = false;
+          reportRumorBtn.innerText = "🚩 Report Rumor";
+          reportToast.className = "text-center text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/30 py-1.5 px-3 rounded-lg";
+          reportToast.innerText = `⚠️ Report failed: ${response?.error || "Firestore disabled"}`;
+          reportToast.classList.remove("hidden");
+          setTimeout(() => reportToast.classList.add("hidden"), 4000);
+        }
       }
     );
   });

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
-import { ShieldAlert, ShieldCheck, AlertTriangle, ExternalLink, Trophy, Flame, Search, RefreshCw, Sparkles, CheckCircle2, User, Activity } from "lucide-react";
+import { ShieldAlert, ShieldCheck, AlertTriangle, ExternalLink, Trophy, Flame, Search, RefreshCw, Sparkles, CheckCircle2, User, Activity, X, Paperclip, FileText } from "lucide-react";
 
 export default function Dashboard() {
   const [reports, setReports] = useState([]);
@@ -12,6 +12,8 @@ export default function Dashboard() {
   const [testClaim, setTestClaim] = useState("");
   const [testResult, setTestResult] = useState(null);
   const [testLoading, setTestLoading] = useState(false);
+  const [attachedFile, setAttachedFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Real-time Firestore Listener
   useEffect(() => {
@@ -84,6 +86,34 @@ export default function Dashboard() {
     } finally {
       setTestLoading(false);
     }
+  };
+
+  const handleClearInput = () => {
+    setTestClaim("");
+    setAttachedFile(null);
+    setTestResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result;
+      if (typeof text === "string") {
+        const cleanText = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, " ").trim();
+        const snippet = cleanText.substring(0, 1000);
+        setTestClaim(snippet);
+        setAttachedFile({
+          name: file.name,
+          size: (file.size / 1024).toFixed(1) + " KB",
+        });
+        setTestResult(null);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const getBadgeColor = (score) => {
@@ -175,27 +205,74 @@ export default function Dashboard() {
           </div>
           <h2 className="text-xl font-bold text-white mb-4">Test Any Claim in Real-Time</h2>
           
-          <form onSubmit={handleTestClaim} className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              value={testClaim}
-              onChange={(e) => setTestClaim(e.target.value)}
-              placeholder="e.g. The Great Wall of China is visible from the Moon"
-              className="flex-1 bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-            />
-            <button
-              type="submit"
-              disabled={testLoading}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/30 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {testLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" /> Verifying with Gemini...
-                </>
-              ) : (
-                <>Verify Claim</>
-              )}
-            </button>
+          <form onSubmit={handleTestClaim} className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={testClaim}
+                  onChange={(e) => setTestClaim(e.target.value)}
+                  placeholder="e.g. The Great Wall of China is visible from the Moon"
+                  className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pl-4 pr-10 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+                {testClaim && (
+                  <button
+                    type="button"
+                    onClick={handleClearInput}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md bg-slate-800/80 hover:bg-slate-700 transition-colors"
+                    title="Clear input"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-3 bg-slate-900 border border-slate-700/80 hover:border-indigo-500 text-indigo-400 hover:text-indigo-300 rounded-xl transition-colors flex items-center justify-center gap-2 text-xs font-semibold shrink-0"
+                title="Upload Document (PDF, DOC, TXT)"
+              >
+                <Paperclip className="w-4 h-4" />
+                <span>Upload Document</span>
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".pdf,.doc,.docx,.txt,.md,.json,.csv"
+                className="hidden"
+              />
+
+              <button
+                type="submit"
+                disabled={testLoading || !testClaim.trim()}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/30 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {testLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" /> Verifying...
+                  </>
+                ) : (
+                  <>Verify Claim</>
+                )}
+              </button>
+            </div>
+
+            {attachedFile && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-950/60 border border-indigo-500/40 rounded-lg text-xs text-indigo-300 max-w-max animate-fadeIn">
+                <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+                <span>Attached document: <strong>{attachedFile.name}</strong> ({attachedFile.size})</span>
+                <button
+                  type="button"
+                  onClick={handleClearInput}
+                  className="ml-1 text-slate-400 hover:text-rose-400 p-0.5 rounded transition-colors"
+                  title="Remove attached file"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </form>
 
           {/* Test Result Display */}
@@ -297,6 +374,20 @@ export default function Dashboard() {
                         {report.score}/100
                       </span>
                     </div>
+
+                    {report.sourceUrl && (
+                      <div className="pt-1">
+                        <a
+                          href={report.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-950/60 hover:bg-indigo-900/70 border border-indigo-500/40 text-indigo-300 hover:text-indigo-200 rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          <span>Original Webpage Source</span>
+                          <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+                        </a>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/50">
                       <div className="flex items-center gap-2">

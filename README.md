@@ -1,20 +1,44 @@
-# Fact-Check Beacon — Hackathon MVP
+# Fact-Check Beacon
 
-**Fact-Check Beacon** is a real-time AI fact-checking system consisting of a Manifest V3 Chrome Extension, Next.js 14 backend with Gemini 3.5 Flash & Google Search grounding, Firebase Firestore database, and a live web dashboard.
+> **Real-time AI claim verification for the open web.** Highlight any text on any webpage and get an instant Trust Score backed by live web grounding from WHO, Reuters, BBC, AP, Snopes, and more.
+
+---
+
+## What It Is
+
+Fact-Check Beacon is an AI-powered misinformation defense system with two components:
+
+- **Chrome Extension (Manifest V3)** — Detects text selection on any page, shows a floating "Verify with Beacon" button, renders an in-page result card with Trust Score, entity-verified grounding sources, and a "Think Before You Share" modal for low-scoring claims.
+- **Next.js Web Dashboard** — Real-time community rumor feed with original webpage source links, reporter leaderboard, and interactive claim sandbox supporting direct document uploads (`.pdf`, `.doc`, `.txt`) — all backed by Firebase Firestore.
 
 ---
 
 ## Key Features
 
-- **Instant Selection Verification**: Highlight any text on any webpage and click the extension icon to fact-check in sub-2 seconds.
-- **Grounding Citations Only**: All `sources[]` are strictly extracted from Gemini Search Grounding metadata — zero invented URLs.
-- **Color-Coded Trust Badge**:
-  - 🟢 **Green `#22C55E`** (80–100): Verified True
-  - 🟡 **Yellow `#EAB308`** (40–79): Needs Context
-  - 🔴 **Red `#EF4444`** (0–39): Likely False
-- **"Think Before You Share" Modal**: Automatically pops up for claims with trust scores under 80, showing verified context and a one-click "Copy Correction" action.
-- **Community Rumor Radar & Leaderboard**: Clicking "Report Rumor" writes to Firebase Firestore server-side (`POST /api/report-rumor`) and updates the web dashboard in real time.
-- **Mock Mode Fallback**: Built-in rehearsal fallback (`USE_MOCK=true`) matching pre-captured real claims for offline presentation reliability.
+| Feature | Detail |
+| :--- | :--- |
+| **Instant In-Page Verification** | Highlight ≥ 3 characters → click → result in 2–5 seconds |
+| **Multi-Provider AI Engine** | Groq → OpenRouter → Gemini → Zero-Key Wikipedia (automatic fallback chain) |
+| **Live Web Grounding & Entity Verification** | Entity relevance matching (`isSourceRelevant`) filters out false/unrelated articles; provides direct `🔍 Verify Web News` search verification links |
+| **Original Source Tracking** | Reports capture webpage URL; dashboard renders an **Original Webpage Source ↗** link for manual verification |
+| **Sandbox Document Upload** | Upload `.pdf`, `.doc`, `.docx`, `.txt`, `.md` directly into the sandbox with client-side FileReader parsing |
+| **Quick Clear Input (`X`)** | One-click button inside claim input field to clear text & attached files instantly |
+| **Trusted Source Bias** | WHO, CDC, UN, UNESCO, AFP, Reuters, Snopes, AP, BBC injected into every LLM prompt |
+| **Color-Coded Trust Score** | 🟢 80–100 Verified True · 🟡 40–79 Needs Context · 🔴 0–39 Likely False |
+| **Think Before You Share Modal** | Auto-fires for scores < 80 with factual correction + "Copy Correction" button |
+| **Community Rumor Radar** | Report Rumor → Firestore → Live dashboard feed + leaderboard |
+| **Shadow DOM Isolation** | Extension UI never conflicts with host page CSS |
+
+---
+
+## Tech Stack
+
+### Chrome Extension
+- Manifest V3 · Vanilla JavaScript · Shadow DOM · Pre-compiled Tailwind CSS (CSP-safe)
+
+### Web App & Backend API
+- Next.js 14 (App Router) · React 18 · Tailwind CSS 3
+- `@google/generative-ai` · `firebase` · `lucide-react`
 
 ---
 
@@ -22,111 +46,90 @@
 
 ```
 FactCheck/
-├── extension/             # Chrome Extension (Manifest V3, Vanilla JS, Tailwind CDN)
+├── extension/                     # Chrome Extension (Manifest V3)
 │   ├── manifest.json
 │   ├── popup.html
 │   ├── popup.js
-│   ├── background.js
-│   └── content.js
-├── web-app/               # Next.js App Router Web Dashboard & Backend API
+│   ├── background.js              # Service worker — proxies API calls, port auto-probe
+│   ├── content.js                 # In-page selection detection, Shadow DOM result card
+│   └── tailwind.css               # Pre-compiled Tailwind (CSP-compliant, no CDN)
+├── web-app/                       # Next.js App Router Web Dashboard & Backend
+│   ├── next.config.js             # Next.js App Router configuration
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── api/
-│   │   │   │   ├── check-claim/route.js
-│   │   │   │   └── report-rumor/route.js
-│   │   │   ├── page.jsx   # Live Dashboard & Leaderboard
+│   │   │   │   ├── check-claim/route.js   # POST /api/check-claim — calls verifyClaimUniversal()
+│   │   │   │   └── report-rumor/route.js  # POST /api/report-rumor — writes to Firestore
+│   │   │   ├── page.jsx           # Live Dashboard, Leaderboard, Sandbox Tester with File Upload
 │   │   │   ├── layout.jsx
 │   │   │   └── globals.css
 │   │   └── lib/
-│   │       ├── firebase.js
-│   │       └── gemini.js
+│   │       ├── factchecker.js     # ⭐ Universal AI engine (Groq/OpenRouter/Gemini/Relevance Filtering)
+│   │       ├── gemini.js          # Gemini-specific module with Search Grounding
+│   │       └── firebase.js        # Firestore singleton
 │   ├── data/
-│   │   └── mockResponses.json
-│   ├── .env.local
-│   ├── .env.example
-│   ├── package.json
-│   └── tailwind.config.js
+│   │   └── mockResponses.json     # 5 pre-captured responses for USE_MOCK=true
+│   ├── .env.local                 # Your credentials (not committed)
+│   ├── .env.example               # Template
+│   └── package.json
 ├── scripts/
-│   └── capture-mock-data.js   # Script to pre-capture mock data via live Gemini
-├── implementation_plan.md
+│   └── capture-mock-data.js       # Regenerates mockResponses.json via live Gemini
+├── HANDOFF.md                     # Full technical handoff document
+├── OVERVIEW.md                    # Product overview & feature detail
 └── README.md
 ```
 
 ---
 
-## Setup & Execution Guide
+## AI Provider Priority Chain
 
-### 1. Configure Environment Variables (`web-app/.env.local`)
+The fact-checking engine in `lib/factchecker.js` always runs in this order:
 
-Copy `.env.example` to `.env.local` inside `web-app/`:
-
-```bash
-cd web-app
-cp .env.example .env.local
+```
+1. Wikipedia Live Search  →  (always fetched first with Proper Noun & relevance filtering)
+2. Groq API              →  llama-3.3-70b-versatile  (GROQ_API_KEY)
+3. OpenRouter API        →  llama-3.3-70b-instruct  (OPENROUTER_API_KEY)
+4. Gemini API            →  gemini-2.0-flash  (GEMINI_API_KEY, must start with AIzaSy)
+5. Zero-Key Engine       →  Keyword sentiment scoring + 🔍 Verify Web News link  (always works)
 ```
 
-Ensure `.env.local` contains your credentials:
+**You only need one API key to get full LLM-powered responses.** Groq is the recommended free-tier provider.
+
+---
+
+## Setup & Execution
+
+### 1. Configure Environment Variables
+
+Edit `web-app/.env.local`:
 
 ```env
-# 1. Gemini API Key (Get free key from https://aistudio.google.com/)
-GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=gsk_...
+OPENROUTER_API_KEY=sk-or-v1-...
+GEMINI_API_KEY=
 
-# 2. Mock Mode Flag (Default: false for live Gemini API calls)
 USE_MOCK=false
 
-# 3. Firebase Web App Config (From Firebase Console)
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSy...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=fact-check-7df9e.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=fact-check-7df9e
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=fact-check-7df9e.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=780400618657
+NEXT_PUBLIC_FIREBASE_APP_ID=1:780400618657:web:8cc219bcd43d1b1767d4e0
 
 NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 
-> ⚠️ **Note**: `USE_MOCK` defaults to `false`. Live mode executes real-time Gemini Search Grounding for any highlighted claim.
-
----
-
-### 2. Install & Start Next.js App
+### 2. Run the Application
 
 ```bash
 cd web-app
 npm install
 npm run dev
+# → Web app runs on http://localhost:3000 (or 3001/3002)
 ```
 
-The web dashboard and backend API will start at `http://localhost:3000`.
-
----
-
-### 3. Load Chrome Extension Unpacked
-
-1. Open Chrome and navigate to `chrome://extensions`.
-2. Toggle on **Developer mode** in the top-right corner.
-3. Click **Load unpacked** in the top-left corner.
-4. Select the `extension/` folder in this repository.
-5. The **Fact-Check Beacon** extension icon will now appear in your browser toolbar!
-
----
-
-### 4. (Optional) Run Pre-Capture Mock Script
-
-To update or regenerate `web-app/data/mockResponses.json` using live Gemini Search Grounding before a demo:
-
-```bash
-# Run from project root
-node scripts/capture-mock-data.js
-```
-
----
-
-## Testing End-to-End
-
-1. Open any webpage (e.g. news article or Wikipedia).
-2. Highlight a sentence or statement with your mouse cursor.
-3. Click the **Fact-Check Beacon** extension icon.
-4. Watch the extension fetch real-time grounded verification from Gemini, display the score ring, sources, and trigger the "Think Before You Share" modal if the score is < 80.
-5. Click **Report Rumor** to file a report.
-6. Open `http://localhost:3000` to watch the report appear live on the dashboard feed and leaderboard!
+### 3. Load Chrome Extension
+1. Open `chrome://extensions/`
+2. Enable **Developer mode**
+3. Click **Load unpacked** → select `extension/` folder

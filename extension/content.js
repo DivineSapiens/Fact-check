@@ -591,12 +591,29 @@ function renderCardResult(container, data) {
             score: data.trustScore,
             status: data.status,
             reporterId: reporterId,
+            sourceUrl: window.location.href,
+            sources: data.sources || [],
           },
         },
-        () => {
-          reportBtn.innerText = "✓ Reported";
+        (response) => {
           const toast = cardShadow.getElementById("card-report-toast");
-          if (toast) toast.classList.remove("hidden");
+          if (response && response.success) {
+            reportBtn.innerText = "✓ Reported";
+            if (toast) {
+              toast.classList.remove("hidden");
+              toast.innerText = "✓ Reported to community rumor radar!";
+            }
+          } else {
+            reportBtn.disabled = false;
+            reportBtn.innerText = "🚩 Report Rumor";
+            if (toast) {
+              toast.classList.remove("hidden");
+              toast.style.color = "#f87171";
+              toast.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+              toast.style.borderColor = "rgba(239, 68, 68, 0.3)";
+              toast.innerText = `⚠️ Report failed: ${response?.error || "Firestore disabled"}`;
+            }
+          }
         }
       );
     });

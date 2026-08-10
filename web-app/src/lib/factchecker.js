@@ -10,29 +10,110 @@
 
 import { checkClaimWithGemini } from "./gemini.js";
 
+// Helper: Check if a source snippet/title actually relates to the specific claim
+function isSourceRelevant(source, claimText) {
+  if (!source || !source.title || !source.snippet) return false;
+  
+  const sourceContent = `${source.title} ${source.snippet}`.toLowerCase();
+
+  // Extract Capitalized Proper Nouns (e.g. NALSAR, UNESCO, Singapore, etc.)
+  const properNouns = (claimText.match(/\b[A-Z][a-zA-Z0-9]{2,}\b/g) || [])
+    .filter(word => !["As", "The", "Our", "This", "That", "Receiving", "A"].includes(word))
+    .map(w => w.toLowerCase());
+
+  // If claim contains specific proper nouns (like NALSAR), source MUST contain at least one proper noun!
+  if (properNouns.length > 0) {
+    const hasProperNounMatch = properNouns.some(noun => sourceContent.includes(noun));
+    if (!hasProperNounMatch) return false;
+  }
+
+  // Filter out generic filler & educational terms that cause false positives
+  const genericTerms = new Set([
+    "was", "were", "been", "that", "this", "with", "from", "said", "have", "accorded", "issued",
+    "subsequently", "before", "should", "order", "status", "december", "first", "about", "students",
+    "graduating", "batch", "school", "university", "education", "degree", "college", "recent", "reported"
+  ]);
+
+  const specificClaimWords = claimText
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .split(/\s+/)
+    .filter(w => w.length > 4 && !genericTerms.has(w));
+
+  if (specificClaimWords.length === 0) return true;
+
+  // Count distinct matching specific keywords
+  const matchCount = specificClaimWords.reduce((count, word) => {
+    return sourceContent.includes(word) ? count + 1 : count;
+  }, 0);
+
+  // Require at least 2 distinct specific terms or 1 proper noun match
+  return matchCount >= 2;
+}
+
 // Live Wikipedia Search Grounding (Zero API Key Required)
 async function fetchWikipediaGrounding(claimText) {
   try {
-    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(claimText)}&format=json&origin=*`;
+    // 1. Extract Proper Nouns first (e.g., NALSAR)
+    const properNouns = (claimText.match(/\b[A-Z][a-zA-Z0-9]{2,}\b/g) || [])
+      .filter(word => !["As", "The", "Our", "This", "That", "Receiving", "A"].includes(word));
+
+    let searchQuery = "";
+    if (properNouns.length > 0) {
+      searchQuery = properNouns.join(" ");
+    } else {
+      // Fallback to top specific non-generic words (>4 chars)
+      const genericTerms = new Set(["students", "graduating", "batch", "school", "university", "education", "degree", "college", "recent", "reported", "said", "about"]);
+      searchQuery = claimText
+        .replace(/[^\w\s]/gi, " ")
+        .split(/\s+/)
+        .filter((word) => word.length > 4 && !genericTerms.has(word.toLowerCase()))
+        .slice(0, 4)
+        .join(" ");
+    }
+
+    if (!searchQuery || searchQuery.trim().length < 3) searchQuery = claimText.substring(0, 60);
+
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchQuery)}&format=json&origin=*`;
+    
     const res = await fetch(searchUrl);
-    if (!res.ok) return [];
+    const data = res.ok ? await res.json() : null;
+    const searchResults = data?.query?.search || [];
 
-    const data = await res.json();
-    const searchResults = data.query?.search || [];
+    const mappedSources = searchResults
+      .map((item) => {
+        const cleanSnippet = (item.snippet || "").replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+        const title = item.title;
+        const pageUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`;
+        return {
+          title: `Wikipedia: ${title}`,
+          url: pageUrl,
+          snippet: cleanSnippet,
+        };
+      })
+      .filter(src => isSourceRelevant(src, claimText))
+      .slice(0, 3);
 
-    return searchResults.slice(0, 3).map((item) => {
-      const cleanSnippet = (item.snippet || "").replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-      const title = item.title;
-      const pageUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`;
-      return {
-        title: `Wikipedia: ${title}`,
-        url: pageUrl,
-        snippet: cleanSnippet,
-      };
-    });
+    // 2. If no direct relevant Wikipedia articles found, output clean direct search verification link
+    if (mappedSources.length === 0) {
+      const cleanSnippet = (properNouns.length > 0 ? properNouns.join(" ") + " convocation" : claimText.substring(0, 60)).trim();
+      mappedSources.push({
+        title: `🔍 Verify Web News: "${cleanSnippet}"`,
+        url: `https://www.google.com/search?q=${encodeURIComponent(cleanSnippet)}`,
+        snippet: "Direct web search query to verify news reports, government orders, and press releases.",
+      });
+    }
+
+    return mappedSources;
   } catch (err) {
     console.error("Wikipedia search failed:", err);
-    return [];
+    return [
+      {
+        title: `🔍 Verify Web News`,
+        url: `https://www.google.com/search?q=${encodeURIComponent(claimText.substring(0, 60))}`,
+        snippet: "Direct web search query for manual verification.",
+      },
+    ];
   }
 }
 

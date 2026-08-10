@@ -17,7 +17,7 @@ export async function OPTIONS() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { claim, score, status, reporterId } = body;
+    const { claim, score, status, reporterId, sourceUrl, sources } = body;
 
     if (!claim) {
       return NextResponse.json(
@@ -31,6 +31,8 @@ export async function POST(request) {
       score: typeof score === "number" ? score : 0,
       status: status || "Reported",
       reporterId: reporterId || `user_${Math.random().toString(36).substring(2, 7)}`,
+      sourceUrl: sourceUrl || "",
+      sources: Array.isArray(sources) ? sources : [],
       timestamp: serverTimestamp(),
       createdAt: new Date().toISOString(),
     };
